@@ -16,14 +16,121 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load Whisper model (using tiny model to avoid tensor issues with base model)
-# The tiny model is more stable with various audio formats
-model = whisper.load_model("tiny")
+# Load Whisper model - will be loaded lazily to avoid startup issues
+model = None
+
+def get_whisper_model():
+    """Lazy loading of Whisper model to avoid startup issues"""
+    global model
+    if model is None:
+        logger.info("Loading Whisper model...")
+        model = whisper.load_model("tiny")
+        logger.info("Whisper model loaded successfully")
+    return model
 
 # Ensure upload directory exists
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+def format_with_whisper_segments(result):
+    """
+    Format transcribed text using Whisper's segment data and word timestamps for natural paragraph breaks.
+    """
+    try:
+        if not result or 'segments' not in result:
+            return result.get('text', '').strip() if result else ''
+        
+        segments = result['segments']
+        if not segments:
+            return result.get('text', '').strip()
+        
+        paragraphs = []
+        current_paragraph = []
+        
+        for i, segment in enumerate(segments):
+            segment_text = segment['text'].strip()
+            
+            if not segment_text:
+                continue
+            
+            # Analyze segment for paragraph breaks
+            should_start_new_paragraph = False
+            
+            # Start new paragraph if:
+            # 1. It's the first segment
+            # 2. There's a significant pause (gap in timestamps)
+            # 3. Current paragraph is getting long
+            # 4. Segment starts with transitional words
+            
+            if i == 0:
+                should_start_new_paragraph = True
+            else:
+                prev_segment = segments[i-1]
+                
+                # Check for pause between segments (longer than 2 seconds indicates topic change)
+                pause_duration = segment['start'] - prev_segment['end']
+                if pause_duration > 2.0:
+                    should_start_new_paragraph = True
+                
+                # Check if current paragraph is getting too long (more than 3 segments)
+                if len(current_paragraph) >= 3:
+                    should_start_new_paragraph = True
+                
+                # Check for transitional phrases at start of segment
+                first_words = segment_text.lower().split()[:3]
+                transition_words = {
+                    'now', 'next', 'then', 'however', 'furthermore', 'moreover', 
+                    'additionally', 'meanwhile', 'therefore', 'consequently', 
+                    'in conclusion', 'finally', 'first', 'second', 'third',
+                    'on the other hand', 'in contrast', 'similarly', 'for example'
+                }
+                
+                for word_combo in [' '.join(first_words[:j]) for j in range(1, len(first_words) + 1)]:
+                    if word_combo in transition_words:
+                        should_start_new_paragraph = True
+                        break
+            
+            # Start new paragraph if needed
+            if should_start_new_paragraph and current_paragraph:
+                paragraphs.append(' '.join(current_paragraph))
+                current_paragraph = []
+            
+            # Clean up segment text
+            cleaned_text = segment_text.strip()
+            if cleaned_text:
+                # Ensure proper capitalization
+                if not current_paragraph:  # First sentence of paragraph
+                    cleaned_text = cleaned_text[0].upper() + cleaned_text[1:] if len(cleaned_text) > 1 else cleaned_text.upper()
+                
+                current_paragraph.append(cleaned_text)
+        
+        # Add the last paragraph
+        if current_paragraph:
+            paragraphs.append(' '.join(current_paragraph))
+        
+        # Join paragraphs with double line breaks
+        formatted_text = '\n\n'.join(paragraphs)
+        
+        # Final cleanup
+        # Clean up spaces within paragraphs, but preserve paragraph breaks
+        lines = formatted_text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            if line.strip():  # Non-empty line
+                cleaned_lines.append(re.sub(r' +', ' ', line.strip()))  # Multiple spaces to single space
+            else:  # Empty line (paragraph separator)
+                cleaned_lines.append('')
+        formatted_text = '\n'.join(cleaned_lines)
+        formatted_text = re.sub(r'\n{3,}', '\n\n', formatted_text)  # Remove excessive line breaks
+        
+        logger.info(f"Formatted text using Whisper segments into {len(paragraphs)} paragraphs")
+        return formatted_text
+        
+    except Exception as e:
+        logger.error(f"Error in Whisper-based formatting: {e}")
+        # Fallback to basic text formatting
+        return result.get('text', '').strip() if result else ''
 
 def format_transcribed_text(text):
     """
@@ -220,26 +327,32 @@ def convert_audio_to_text(filepath):
         
         # Use Whisper to transcribe the audio with error handling
         try:
-            # Use smaller model options and explicit parameters to avoid tensor issues
-            result = model.transcribe(
+            # Get the model (lazy loading)
+            whisper_model = get_whisper_model()
+            
+            # Use advanced Whisper options to get timing and segment information
+            result = whisper_model.transcribe(
                 filepath,
                 fp16=False,  # Disable FP16 to avoid warnings and potential issues
                 language=None,  # Let Whisper auto-detect language
                 task="transcribe",  # Explicitly set task
                 verbose=False,  # Reduce verbose output
-                temperature=0  # Use deterministic decoding
+                temperature=0,  # Use deterministic decoding
+                word_timestamps=True,  # Enable word-level timestamps
+                condition_on_previous_text=True,  # Better context awareness
             )
             
             text = result["text"].strip()
             logger.info(f"Transcription completed. Text length: {len(text)}")
+            logger.info(f"Number of segments: {len(result.get('segments', []))}")
             
             if not text:
                 logger.warning("Transcription returned empty text")
                 return None
             
-            # Format the text into paragraphs and sentences
-            formatted_text = format_transcribed_text(text)
-            logger.info(f"Text formatting completed")
+            # Use Whisper segment data for intelligent formatting
+            formatted_text = format_with_whisper_segments(result)
+            logger.info(f"Whisper-based formatting completed")
             
             return formatted_text
             
@@ -249,7 +362,7 @@ def convert_audio_to_text(filepath):
             # Try with different parameters as fallback
             try:
                 logger.info("Attempting transcription with fallback parameters...")
-                result = model.transcribe(
+                result = whisper_model.transcribe(
                     filepath,
                     fp16=False,
                     language="en",  # Force English as fallback

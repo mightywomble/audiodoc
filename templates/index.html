@@ -160,11 +160,24 @@
             border-radius: 10px;
             padding: 25px;
             min-height: 200px;
+            max-height: 500px;
             font-size: 1.1rem;
-            line-height: 1.6;
+            line-height: 1.8;
             color: #333;
             white-space: pre-wrap;
             word-wrap: break-word;
+            overflow-y: auto;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+        
+        .text-output p {
+            margin-bottom: 1.2em;
+            text-align: justify;
+        }
+        
+        .text-output:focus {
+            outline: 2px solid #4facfe;
+            outline-offset: 2px;
         }
 
         .actions {
@@ -377,6 +390,8 @@
                 if (data.success) {
                     currentText = data.text;
                     currentTimestamp = data.timestamp;
+                    console.log('Received text from server:', JSON.stringify(data.text));
+                    console.log('Text contains paragraph breaks (\\n\\n):', data.text.includes('\n\n'));
                     showResult(data.text);
                     showSuccess('Audio successfully converted to text!');
                 } else {
@@ -416,8 +431,49 @@
         }
 
         function showResult(text) {
-            textOutput.textContent = text;
+            // Convert formatted text with line breaks to proper HTML
+            displayFormattedText(text);
             resultSection.style.display = 'block';
+        }
+        
+        function displayFormattedText(text) {
+            // Debug: log the text to see what we're getting
+            console.log('Text to display:', JSON.stringify(text));
+            console.log('Contains \\n\\n:', text.includes('\n\n'));
+            console.log('Text length:', text.length);
+            
+            // Always try to split by double line breaks first (Whisper format)
+            let paragraphs = text.split('\n\n').filter(p => p.trim());
+            console.log('Split by \\n\\n:', paragraphs.length, 'paragraphs');
+            
+            // If we got multiple paragraphs from Whisper formatting
+            if (paragraphs.length > 1) {
+                console.log('Creating HTML with', paragraphs.length, 'paragraphs');
+                const htmlContent = paragraphs
+                    .map(paragraph => `<p>${paragraph.trim()}</p>`)
+                    .join('');
+                textOutput.innerHTML = htmlContent;
+                console.log('HTML content created:', htmlContent.substring(0, 200) + '...');
+            }
+            // Try single line breaks as fallback
+            else if (text.includes('\n')) {
+                const lines = text.split('\n').filter(l => l.trim());
+                console.log('Fallback - Split by \\n:', lines.length, 'lines');
+                
+                if (lines.length > 1) {
+                    const htmlContent = lines
+                        .map(line => `<p>${line.trim()}</p>`)
+                        .join('');
+                    textOutput.innerHTML = htmlContent;
+                } else {
+                    textOutput.innerText = text;
+                }
+            }
+            else {
+                // Single block of text with no line breaks
+                console.log('Using single text block - no line breaks found');
+                textOutput.innerText = text;
+            }
         }
 
         function showError(message) {
@@ -438,7 +494,17 @@
         }
 
         function downloadWord() {
-            const text = textOutput.textContent;
+            // Get text preserving paragraph structure
+            let text;
+            if (textOutput.innerHTML.includes('<p>')) {
+                // If we have HTML paragraphs, extract them with double line breaks
+                const paragraphs = Array.from(textOutput.querySelectorAll('p')).map(p => p.textContent);
+                text = paragraphs.join('\n\n');
+            } else {
+                // Fallback to textContent
+                text = textOutput.textContent;
+            }
+            
             if (!text.trim()) {
                 showError('No text to download.');
                 return;
@@ -545,7 +611,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    textOutput.textContent = data.formatted_text;
+                    // Use the same display function to show formatted text
+                    displayFormattedText(data.formatted_text);
                     showSuccess('Text formatted into paragraphs!');
                 } else {
                     showError(data.error || 'Failed to format text.');
