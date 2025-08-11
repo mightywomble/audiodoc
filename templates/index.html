@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioDoc - Audio to Text Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 50px 20px;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #4facfe;
+            background: #f0f8ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #4facfe;
+            background: #e6f3ff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .progress-section {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .text-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 25px;
+            min-height: 200px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .actions {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .upload-area {
+                padding: 30px 15px;
+            }
+
+            .upload-icon {
+                font-size: 3rem;
+            }
+
+            .upload-text {
+                font-size: 1rem;
+            }
+
+            .btn {
+                display: block;
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            .actions .btn {
+                display: inline-block;
+                width: auto;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .text-output {
+                padding: 15px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎵 AudioDoc</h1>
+            <p>Convert your audio files to text instantly</p>
+        </header>
+
+        <main class="main-content">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">🎤</div>
+                    <div class="upload-text">
+                        <strong>Click to upload</strong> or drag and drop your audio file here
+                    </div>
+                    <p style="font-size: 0.9rem; color: #999; margin-top: 10px;">
+                        Supports MP3, WAV, M4A, OGG and other audio formats
+                    </p>
+                    <input type="file" id="audioFile" class="file-input" accept="audio/*">
+                </div>
+                <button class="btn" id="uploadBtn" style="margin-top: 20px;">Choose File</button>
+            </div>
+
+            <div class="progress-section" id="progressSection">
+                <h3>Processing your audio...</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p>This may take a few moments depending on file size</p>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+
+            <div class="result-section" id="resultSection">
+                <h3 style="margin-bottom: 20px;">📝 Transcription Result</h3>
+                <div class="text-output" id="textOutput" contenteditable="true"></div>
+                
+                <div class="actions">
+                    <button class="btn btn-success" id="downloadBtn">💾 Save as Word</button>
+                    <button class="btn btn-secondary" id="shareBtn">🔗 Share Text</button>
+                    <button class="btn" id="formatBtn">📝 Format Text</button>
+                    <button class="btn" id="newFileBtn">🔄 Process New File</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentText = '';
+        let currentTimestamp = '';
+
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const audioFile = document.getElementById('audioFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const resultSection = document.getElementById('resultSection');
+        const textOutput = document.getElementById('textOutput');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const formatBtn = document.getElementById('formatBtn');
+        const newFileBtn = document.getElementById('newFileBtn');
+
+        // Event Listeners
+        uploadArea.addEventListener('click', () => audioFile.click());
+        uploadBtn.addEventListener('click', () => audioFile.click());
+        audioFile.addEventListener('change', handleFileSelect);
+        downloadBtn.addEventListener('click', downloadWord);
+        shareBtn.addEventListener('click', shareText);
+        formatBtn.addEventListener('click', formatText);
+        newFileBtn.addEventListener('click', resetForm);
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                audioFile.files = files;
+                handleFileSelect();
+            }
+        });
+
+        function handleFileSelect() {
+            const file = audioFile.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('audio/')) {
+                showError('Please select a valid audio file.');
+                return;
+            }
+
+            uploadAudio(file);
+        }
+
+        function uploadAudio(file) {
+            hideMessages();
+            showProgress();
+
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProgress();
+                if (data.success) {
+                    currentText = data.text;
+                    currentTimestamp = data.timestamp;
+                    showResult(data.text);
+                    showSuccess('Audio successfully converted to text!');
+                } else {
+                    showError(data.error || 'Failed to process audio file.');
+                }
+            })
+            .catch(error => {
+                hideProgress();
+                console.error('Error:', error);
+                showError('Network error. Please try again.');
+            });
+        }
+
+        function showProgress() {
+            document.querySelector('.upload-section').style.display = 'none';
+            progressSection.style.display = 'block';
+            resultSection.style.display = 'none';
+            
+            // Animate progress bar
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = progress + '%';
+            }, 200);
+
+            // Store interval to clear it later
+            window.progressInterval = interval;
+        }
+
+        function hideProgress() {
+            progressSection.style.display = 'none';
+            if (window.progressInterval) {
+                clearInterval(window.progressInterval);
+            }
+            progressFill.style.width = '100%';
+        }
+
+        function showResult(text) {
+            textOutput.textContent = text;
+            resultSection.style.display = 'block';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        function downloadWord() {
+            const text = textOutput.textContent;
+            if (!text.trim()) {
+                showError('No text to download.');
+                return;
+            }
+
+            const filename = `transcription_${new Date().toISOString().slice(0,10)}`;
+            
+            fetch('/download_word', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text,
+                    filename: filename
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                } else {
+                    throw new Error('Failed to generate Word document');
+                }
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                showSuccess('Word document downloaded successfully!');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to download Word document.');
+            });
+        }
+
+        function shareText() {
+            const text = textOutput.textContent;
+            if (!text.trim()) {
+                showError('No text to share.');
+                return;
+            }
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Audio Transcription',
+                    text: text,
+                }).then(() => {
+                    showSuccess('Text shared successfully!');
+                }).catch((error) => {
+                    console.log('Error sharing:', error);
+                    fallbackShare(text);
+                });
+            } else {
+                fallbackShare(text);
+            }
+        }
+
+        function fallbackShare(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showSuccess('Text copied to clipboard!');
+                }).catch(() => {
+                    showError('Failed to copy text to clipboard.');
+                });
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showSuccess('Text copied to clipboard!');
+                } catch (err) {
+                    showError('Failed to copy text to clipboard.');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function formatText() {
+            const text = textOutput.textContent;
+            if (!text.trim()) {
+                showError('No text to format.');
+                return;
+            }
+
+            formatBtn.disabled = true;
+            formatBtn.textContent = '⏳ Formatting...';
+            
+            fetch('/format_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    textOutput.textContent = data.formatted_text;
+                    showSuccess('Text formatted into paragraphs!');
+                } else {
+                    showError(data.error || 'Failed to format text.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to format text.');
+            })
+            .finally(() => {
+                formatBtn.disabled = false;
+                formatBtn.textContent = '📝 Format Text';
+            });
+        }
+
+        function resetForm() {
+            audioFile.value = '';
+            currentText = '';
+            currentTimestamp = '';
+            document.querySelector('.upload-section').style.display = 'block';
+            resultSection.style.display = 'none';
+            hideMessages();
+            hideProgress();
+        }
+    </script>
+</body>
+</html>
