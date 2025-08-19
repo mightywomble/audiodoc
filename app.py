@@ -11,21 +11,30 @@ import re
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.config['REQUEST_TIMEOUT'] = 600  # 10 minute timeout for large files
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Load Whisper model - will be loaded lazily to avoid startup issues
 model = None
 
 def get_whisper_model():
-    """Lazy loading of Whisper model to avoid startup issues"""
+    """Lazy loading of Whisper model with optimizations for Apple Silicon"""
     global model
     if model is None:
-        logger.info("Loading Whisper model...")
-        model = whisper.load_model("tiny")
-        logger.info("Whisper model loaded successfully")
+        logger.info("Loading Whisper large-v3 model (this may take a moment on first run)...")
+        # Load the large-v3 model with Apple Silicon optimizations
+        model = whisper.load_model(
+            "large-v3",
+            device="cpu",  # Use CPU for Apple Silicon optimization
+            download_root=None  # Use default cache location
+        )
+        logger.info("Whisper large-v3 model loaded successfully")
     return model
 
 # Ensure upload directory exists
@@ -289,8 +298,16 @@ def upload_file():
         return jsonify({'error': f'Error processing file: {str(e)}'}), 500
 
 def convert_audio_to_text(filepath):
+    import psutil
+    import gc
+    import torch
+    
     try:
         logger.info(f"Starting transcription for: {filepath}")
+        
+        # Log system memory info
+        memory = psutil.virtual_memory()
+        logger.info(f"System memory: {memory.available / (1024**3):.1f}GB available, {memory.percent}% used")
         
         # Validate file exists and has content
         if not os.path.exists(filepath):
@@ -302,7 +319,7 @@ def convert_audio_to_text(filepath):
             logger.error(f"File is empty: {filepath}")
             return None
             
-        logger.info(f"File size: {file_size} bytes")
+        logger.info(f"File size: {file_size} bytes ({file_size / (1024**2):.1f}MB)")
         
         # Load audio and check duration to avoid problematic files
         try:
@@ -312,8 +329,8 @@ def convert_audio_to_text(filepath):
             logger.info(f"Audio duration: {duration:.2f} seconds")
             
             # Skip very short audio files that might cause tensor issues
-            if duration < 0.1:  # Less than 0.1 seconds
-                logger.error("Audio file too short")
+            if duration < 0.5:  # Less than 0.5 seconds
+                logger.error("Audio file too short (minimum 0.5 seconds)")
                 return None
                 
             # Skip very long audio files to avoid memory issues
@@ -325,60 +342,128 @@ def convert_audio_to_text(filepath):
             logger.error(f"Failed to load audio: {audio_load_error}")
             return None
         
-        # Use Whisper to transcribe the audio with error handling
-        try:
-            # Get the model (lazy loading)
-            whisper_model = get_whisper_model()
-            
-            # Use advanced Whisper options to get timing and segment information
-            result = whisper_model.transcribe(
-                filepath,
-                fp16=False,  # Disable FP16 to avoid warnings and potential issues
-                language=None,  # Let Whisper auto-detect language
-                task="transcribe",  # Explicitly set task
-                verbose=False,  # Reduce verbose output
-                temperature=0,  # Use deterministic decoding
-                word_timestamps=True,  # Enable word-level timestamps
-                condition_on_previous_text=True,  # Better context awareness
-            )
-            
-            text = result["text"].strip()
-            logger.info(f"Transcription completed. Text length: {len(text)}")
-            logger.info(f"Number of segments: {len(result.get('segments', []))}")
-            
-            if not text:
-                logger.warning("Transcription returned empty text")
-                return None
-            
-            # Use Whisper segment data for intelligent formatting
-            formatted_text = format_with_whisper_segments(result)
-            logger.info(f"Whisper-based formatting completed")
-            
-            return formatted_text
-            
-        except Exception as whisper_error:
-            logger.error(f"Whisper transcription error: {whisper_error}")
-            
-            # Try with different parameters as fallback
+        # Clear any existing model and force garbage collection
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+        
+        # Try multiple strategies for transcription
+        strategies = [
+            {
+                'name': 'Full Quality (large-v3 with word timestamps)',
+                'model': 'large-v3',
+                'params': {
+                    'fp16': False,
+                    'language': "en",
+                    'task': "transcribe",
+                    'verbose': False,
+                    'temperature': 0.0,
+                    'word_timestamps': True,
+                    'condition_on_previous_text': True,
+                    'no_speech_threshold': 0.6,
+                    'logprob_threshold': -1.0,
+                    'compression_ratio_threshold': 2.4,
+                }
+            },
+            {
+                'name': 'Simplified (large-v3 basic)',
+                'model': 'large-v3',
+                'params': {
+                    'fp16': False,
+                    'language': "en",
+                    'task': "transcribe",
+                    'verbose': False,
+                    'word_timestamps': False,
+                    'condition_on_previous_text': False
+                }
+            },
+            {
+                'name': 'Medium Model Fallback',
+                'model': 'medium.en',
+                'params': {
+                    'fp16': False,
+                    'language': "en",
+                    'task': "transcribe",
+                    'verbose': False,
+                    'word_timestamps': False,
+                    'condition_on_previous_text': False
+                }
+            },
+            {
+                'name': 'Base Model Fallback',
+                'model': 'base.en',
+                'params': {
+                    'fp16': False,
+                    'language': "en",
+                    'task': "transcribe",
+                    'verbose': False,
+                    'word_timestamps': False,
+                    'condition_on_previous_text': False
+                }
+            }
+        ]
+        
+        for i, strategy in enumerate(strategies):
             try:
-                logger.info("Attempting transcription with fallback parameters...")
-                result = whisper_model.transcribe(
-                    filepath,
-                    fp16=False,
-                    language="en",  # Force English as fallback
-                    task="transcribe",
-                    verbose=False,
-                    word_timestamps=False,  # Disable word timestamps to reduce complexity
-                    condition_on_previous_text=False  # Disable conditioning
-                )
+                logger.info(f"Attempting strategy {i+1}/4: {strategy['name']}")
+                
+                # Load the appropriate model
+                if strategy['model'] != 'large-v3' or model is None:
+                    logger.info(f"Loading {strategy['model']} model...")
+                    current_model = whisper.load_model(
+                        strategy['model'],
+                        device="cpu",
+                        download_root=None
+                    )
+                else:
+                    current_model = get_whisper_model()
+                
+                # Clear cache before transcription
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
+                
+                # Attempt transcription
+                result = current_model.transcribe(filepath, **strategy['params'])
                 
                 text = result["text"].strip()
-                logger.info(f"Fallback transcription completed. Text length: {len(text)}")
-                return text if text else None
+                logger.info(f"Strategy {i+1} succeeded! Text length: {len(text)}")
+                logger.info(f"Number of segments: {len(result.get('segments', []))}")
                 
-            except Exception as fallback_error:
-                logger.error(f"Fallback transcription also failed: {fallback_error}")
-                return None
+                if not text:
+                    logger.warning(f"Strategy {i+1} returned empty text, trying next strategy...")
+                    continue
+                
+                # Format the text based on available data
+                if result.get('segments') and strategy['params'].get('word_timestamps', False):
+                    formatted_text = format_with_whisper_segments(result)
+                    logger.info(f"Used Whisper segment formatting")
+                else:
+                    formatted_text = format_transcribed_text(text)
+                    logger.info(f"Used basic text formatting")
+                
+                return formatted_text
+                
+            except Exception as strategy_error:
+                logger.error(f"Strategy {i+1} failed: {strategy_error}")
+                
+                # Clean up memory after failed attempt
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
+                
+                # If it's a tensor shape error, try the next strategy immediately
+                error_str = str(strategy_error).lower()
+                if any(keyword in error_str for keyword in ['tensor', 'reshape', 'linear', 'cuda', 'memory']):
+                    logger.info(f"Memory/tensor error detected, trying next strategy...")
+                    continue
+                
+                # For other errors, also continue to next strategy
+                continue
+        
+        # If all strategies failed
+        logger.error("All transcription strategies failed")
+        return None
                 
     except Exception as e:
         logger.error(f"General error in speech recognition: {e}")
@@ -445,7 +530,48 @@ def format_text():
 
 @app.route('/health')
 def health_check():
-    return jsonify({'status': 'healthy'})
+    import psutil
+    memory = psutil.virtual_memory()
+    return jsonify({
+        'status': 'healthy',
+        'memory_available_gb': round(memory.available / (1024**3), 1),
+        'memory_percent_used': memory.percent,
+        'whisper_model_loaded': model is not None,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/test')
+def test_endpoint():
+    """Test endpoint to verify server is working"""
+    return jsonify({
+        'message': 'Server is running!',
+        'timestamp': datetime.now().isoformat(),
+        'endpoints': [
+            'GET /',
+            'POST /upload',
+            'POST /download_word',
+            'POST /format_text',
+            'GET /health',
+            'GET /test'
+        ]
+    })
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    import sys
+    
+    # Check if we should use production server
+    if '--production' in sys.argv:
+        # Use Gunicorn for production with longer timeout
+        print("Starting production server with Gunicorn...")
+        print("Run: gunicorn --bind 0.0.0.0:5001 --timeout 600 --workers 1 app:app")
+        sys.exit(0)
+    else:
+        # Development server with threading
+        print("Starting development server...")
+        print("Note: For longer processing times, use: python app.py --production")
+        app.run(
+            debug=True,
+            host='0.0.0.0',
+            port=5001,
+            threaded=True  # Enable threading for concurrent requests
+        )

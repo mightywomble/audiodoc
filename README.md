@@ -5,7 +5,7 @@ A responsive web application that converts audio files to text using speech reco
 ## Features
 
 - 🎵 **Audio Upload**: Support for multiple audio formats (MP3, WAV, M4A, OGG, etc.)
-- 🎤 **Speech Recognition**: Converts audio to text using OpenAI Whisper (offline)
+- 🎤 **Speech Recognition**: Converts audio to text using OpenAI Whisper Large-v3 (offline, highest accuracy)
 - 📱 **Responsive Design**: Works perfectly on desktop, tablet, and mobile
 - 💾 **Word Export**: Save transcriptions as Word documents (.docx)
 - 🔗 **Share Functionality**: Share text via native sharing or copy to clipboard
@@ -80,9 +80,10 @@ A responsive web application that converts audio files to text using speech reco
 
 ### Backend
 - **Flask**: Web framework
-- **OpenAI Whisper**: Advanced speech recognition (offline)
+- **OpenAI Whisper Large-v3**: State-of-the-art speech recognition (offline, highest accuracy)
 - **python-docx**: Word document generation
-- **PyTorch**: Machine learning framework for Whisper
+- **PyTorch**: Machine learning framework optimized for Apple Silicon
+- **Advanced Processing**: Voice activity detection, word-level timestamps, intelligent paragraph formatting
 
 ### Frontend
 - **Responsive HTML/CSS**: Works on all device sizes
@@ -92,9 +93,10 @@ A responsive web application that converts audio files to text using speech reco
 
 ### File Processing
 1. Audio files are temporarily saved and processed
-2. Whisper directly processes various audio formats
-3. AI-powered transcription converts audio to text
-4. Temporary files are automatically cleaned up
+2. Whisper Large-v3 directly processes various audio formats
+3. Advanced AI transcription with voice activity detection and word-level timestamps
+4. Intelligent paragraph formatting using segment timing analysis
+5. Temporary files are automatically cleaned up
 
 ## API Endpoints
 
@@ -144,7 +146,8 @@ The application includes comprehensive error handling for:
 - Ensure sufficient disk space for Whisper models
 
 **Performance**:
-- First run may be slower as Whisper downloads models
-- Larger files take longer to process
-- No internet connection required after initial setup
-- Consider breaking very long audio files into smaller chunks
+- First run downloads the large-v3 model (~1.5GB) - this happens automatically
+- Processing time: 1-3 minutes for typical recordings (significantly more accurate than smaller models)
+- Optimized for Apple Silicon Macs (M1/M2/M3/M4)
+- No internet connection required after initial model download
+- Supports audio files up to 30 minutes in length

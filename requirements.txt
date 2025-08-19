@@ -2,3 +2,5 @@ Flask
 openai-whisper
 python-docx
 Werkzeug
+psutil
+gunicorn

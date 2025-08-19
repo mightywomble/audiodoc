@@ -123,27 +123,49 @@
 
         .progress-section {
             display: none;
-            text-align: center;
             margin: 30px 0;
         }
 
-        .progress-step {
-            margin: 25px 0;
+        .progress-container {
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: 30px;
+            min-height: 400px;
         }
 
-        .progress-step h4 {
-            margin-bottom: 10px;
-            font-size: 1.1rem;
+        .current-status {
+            text-align: center;
+            padding: 40px 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .current-status h3 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
             color: #333;
+        }
+
+        .current-status .status-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .current-status .status-message {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 20px;
         }
 
         .progress-bar {
             width: 100%;
-            height: 10px;
+            height: 12px;
             background: #f0f0f0;
-            border-radius: 5px;
+            border-radius: 6px;
             overflow: hidden;
-            margin: 15px 0;
+            margin: 20px 0;
             position: relative;
         }
 
@@ -152,7 +174,7 @@
             background: linear-gradient(90deg, #4facfe, #00f2fe);
             width: 0%;
             transition: width 0.3s ease;
-            border-radius: 5px;
+            border-radius: 6px;
         }
 
         .progress-fill.uploading {
@@ -165,30 +187,79 @@
             animation: processing-pulse 2s infinite;
         }
 
-        .progress-fill.complete {
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
-            animation: none;
-        }
-
-        .progress-status {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 8px;
-        }
-
-        .progress-step.completed .progress-fill {
-            width: 100% !important;
+        .progress-fill.finalizing {
             background: linear-gradient(90deg, #28a745, #20c997);
-            animation: none;
+            animation: pulse 1.5s infinite;
         }
 
-        .progress-step.completed h4 {
-            color: #28a745;
+        .progress-percentage {
+            font-size: 1rem;
+            color: #666;
+            margin-top: 10px;
         }
 
-        .progress-step.completed h4:after {
-            content: ' ✓';
+        .steps-checklist {
+            background: white;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+            padding: 25px;
+        }
+
+        .steps-checklist h4 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+        }
+
+        .step-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .step-icon.pending {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #dee2e6;
+        }
+
+        .step-icon.completed {
+            background: #28a745;
+            color: white;
+            border: 2px solid #28a745;
+        }
+
+        .step-text {
+            flex: 1;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .step-item.completed .step-text {
             color: #28a745;
+            font-weight: 500;
+        }
+
+        .step-item.pending .step-text {
+            color: #6c757d;
         }
 
         @keyframes pulse {
@@ -341,36 +412,39 @@
             </div>
 
             <div class="progress-section" id="progressSection">
-                <h3>Processing your audio...</h3>
-                
-                <div class="progress-step" id="uploadStep">
-                    <h4>📤 Uploading File</h4>
-                    <div class="progress-bar">
-                        <div class="progress-fill uploading" id="uploadProgressFill"></div>
+                <div class="progress-container">
+                    <!-- Current Status Panel -->
+                    <div class="current-status">
+                        <h3 id="currentStatusTitle">Uploading File</h3>
+                        <div class="status-icon" id="statusIcon">📤</div>
+                        <div class="status-message" id="statusMessage">Preparing to upload your audio file...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill uploading" id="currentProgressFill"></div>
+                        </div>
+                        <div class="progress-percentage" id="progressPercentage">0%</div>
                     </div>
-                    <div class="progress-status" id="uploadStatus">Preparing upload...</div>
-                </div>
 
-                <div class="progress-step" id="whisperStep">
-                    <h4>🤖 Processing with Whisper AI</h4>
-                    <div class="progress-bar">
-                        <div class="progress-fill processing" id="whisperProgressFill"></div>
-                    </div>
-                    <div class="progress-status" id="whisperStatus">Waiting for upload to complete...</div>
-                    <div style="font-size: 0.8rem; color: #888; margin-top: 8px; font-style: italic;">
-                        💡 This step can take 2-5 minutes depending on audio length. The progress bar shows estimated completion.
+                    <!-- Steps Checklist Panel -->
+                    <div class="steps-checklist">
+                        <h4>Progress Steps</h4>
+                        <div class="step-item" id="stepUpload">
+                            <div class="step-icon pending" id="iconUpload">1</div>
+                            <div class="step-text">Upload File</div>
+                        </div>
+                        <div class="step-item" id="stepProcessing">
+                            <div class="step-icon pending" id="iconProcessing">2</div>
+                            <div class="step-text">AI Processing (Whisper Large-v3)</div>
+                        </div>
+                        <div class="step-item" id="stepFinalizing">
+                            <div class="step-icon pending" id="iconFinalizing">3</div>
+                            <div class="step-text">Finalizing & Formatting</div>
+                        </div>
+                        <div class="step-item" id="stepDisplaying">
+                            <div class="step-icon pending" id="iconDisplaying">4</div>
+                            <div class="step-text">Displaying Results</div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="progress-step" id="processingStep">
-                    <h4>📝 Formatting & Finalizing Text</h4>
-                    <div class="progress-bar">
-                        <div class="progress-fill complete" id="processingProgressFill"></div>
-                    </div>
-                    <div class="progress-status" id="processingStatus">Waiting for transcription...</div>
-                </div>
-
-                <p style="margin-top: 20px; color: #666;">This may take a few moments depending on file size</p>
             </div>
 
             <div class="error-message" id="errorMessage"></div>
@@ -399,15 +473,6 @@
         const audioFile = document.getElementById('audioFile');
         const uploadBtn = document.getElementById('uploadBtn');
         const progressSection = document.getElementById('progressSection');
-        const uploadStep = document.getElementById('uploadStep');
-        const whisperStep = document.getElementById('whisperStep');
-        const processingStep = document.getElementById('processingStep');
-        const uploadProgressFill = document.getElementById('uploadProgressFill');
-        const whisperProgressFill = document.getElementById('whisperProgressFill');
-        const processingProgressFill = document.getElementById('processingProgressFill');
-        const uploadStatus = document.getElementById('uploadStatus');
-        const whisperStatus = document.getElementById('whisperStatus');
-        const processingStatus = document.getElementById('processingStatus');
         const resultSection = document.getElementById('resultSection');
         const textOutput = document.getElementById('textOutput');
         const errorMessage = document.getElementById('errorMessage');
@@ -416,6 +481,23 @@
         const shareBtn = document.getElementById('shareBtn');
         const formatBtn = document.getElementById('formatBtn');
         const newFileBtn = document.getElementById('newFileBtn');
+        
+        // New progress elements
+        const currentStatusTitle = document.getElementById('currentStatusTitle');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusMessage = document.getElementById('statusMessage');
+        const currentProgressFill = document.getElementById('currentProgressFill');
+        const progressPercentage = document.getElementById('progressPercentage');
+        
+        // Step elements
+        const stepUpload = document.getElementById('stepUpload');
+        const stepProcessing = document.getElementById('stepProcessing');
+        const stepFinalizing = document.getElementById('stepFinalizing');
+        const stepDisplaying = document.getElementById('stepDisplaying');
+        const iconUpload = document.getElementById('iconUpload');
+        const iconProcessing = document.getElementById('iconProcessing');
+        const iconFinalizing = document.getElementById('iconFinalizing');
+        const iconDisplaying = document.getElementById('iconDisplaying');
 
         // Event Listeners
         uploadArea.addEventListener('click', () => audioFile.click());
@@ -458,78 +540,183 @@
             uploadAudio(file);
         }
 
-        function uploadAudio(file) {
-            hideMessages();
-            showProgress();
+        function uploadAudio(file, retryCount = 0) {
+            const MAX_RETRIES = 10;
+            const RETRY_DELAY = 60000; // 1 minute
             
-            // Start upload progress
-            startUploadProgress();
+            if (retryCount === 0) {
+                hideMessages();
+                showProgress();
+                startUploadProgress();
+            } else {
+                console.log(`Retry attempt ${retryCount}/${MAX_RETRIES}`);
+                uploadStatus.textContent = `Reconnecting... (attempt ${retryCount}/${MAX_RETRIES})`;
+            }
 
             const formData = new FormData();
             formData.append('audio', file);
 
             const xhr = new XMLHttpRequest();
+            let lastProgressPercent = 0;
             
             // Track upload progress
             xhr.upload.addEventListener('progress', (e) => {
                 if (e.lengthComputable) {
                     const percentComplete = (e.loaded / e.total) * 100;
+                    lastProgressPercent = percentComplete;
                     updateUploadProgress(percentComplete);
                 }
             });
             
             // Handle upload completion and start processing
             xhr.addEventListener('load', () => {
+                console.log('XHR Load Event - Status:', xhr.status, 'Response Length:', xhr.responseText?.length || 0);
+                
                 if (xhr.status === 200) {
                     completeUploadStep();
-                    startWhisperStep();
+                    startWhisperStep(); // Start 5-minute countdown immediately
                     
                     try {
+                        console.log('Raw response:', xhr.responseText);
                         const data = JSON.parse(xhr.responseText);
+                        console.log('Parsed response data:', data);
+                        
                         if (data.success) {
                             // Complete Whisper step and start final processing
+                            completeWhisperStep();
+                            startFinalProcessingStep();
+                            
+                            // Complete final processing
                             setTimeout(() => {
-                                completeWhisperStep();
-                                startFinalProcessingStep();
+                                completeFinalProcessingStep();
+                                currentText = data.text;
+                                currentTimestamp = data.timestamp;
+                                console.log('Received text from server:', JSON.stringify(data.text));
+                                console.log('Text contains paragraph breaks (\\n\\n):', data.text.includes('\n\n'));
                                 
-                                // Complete final processing
+                                // Show completion before hiding
                                 setTimeout(() => {
-                                    completeFinalProcessingStep();
-                                    currentText = data.text;
-                                    currentTimestamp = data.timestamp;
-                                    console.log('Received text from server:', JSON.stringify(data.text));
-                                    console.log('Text contains paragraph breaks (\\n\\n):', data.text.includes('\n\n'));
-                                    
-                                    // Show completion before hiding
-                                    setTimeout(() => {
-                                        hideProgress();
-                                        showResult(data.text);
-                                        showSuccess('Audio successfully converted to text!');
-                                    }, 500);
-                                }, 1000); // Final processing time
-                            }, 2000); // Whisper processing time
+                                    hideProgress();
+                                    showResult(data.text);
+                                    showSuccess('Audio successfully converted to text!');
+                                }, 500);
+                            }, 1000); // Brief final processing time
+                        } else {
+                            // Server processing error - don't retry, show error
+                            hideProgress();
+                            const errorMsg = data.error || 'Unknown processing error';
+                            console.error('Server processing error:', errorMsg);
+                            showError(`Processing failed: ${errorMsg}`);
+                        }
+                    } catch (parseError) {
+                        // JSON parsing error - might be recoverable, try retry
+                        console.error('Error parsing JSON response:', parseError);
+                        console.error('Raw response was:', xhr.responseText);
+                        
+                        if (retryCount < MAX_RETRIES) {
+                            console.log('JSON parse error, will retry...');
+                            setTimeout(() => uploadAudio(file, retryCount + 1), RETRY_DELAY);
+                            uploadStatus.textContent = `Server response error, retrying in 1 minute... (${retryCount + 1}/${MAX_RETRIES})`;
                         } else {
                             hideProgress();
-                            showError(data.error || 'Failed to process audio file.');
+                            showError(`Server response error after ${MAX_RETRIES} attempts: ${parseError.message}`);
                         }
-                    } catch (error) {
+                    }
+                } else if (xhr.status === 0) {
+                    // Network error - retry
+                    console.error('Network request failed - Status 0 (connection refused/timeout)');
+                    if (retryCount < MAX_RETRIES) {
+                        console.log('Network error, will retry...');
+                        setTimeout(() => uploadAudio(file, retryCount + 1), RETRY_DELAY);
+                        uploadStatus.textContent = `Connection failed, retrying in 1 minute... (${retryCount + 1}/${MAX_RETRIES})`;
+                    } else {
                         hideProgress();
-                        console.error('Error parsing response:', error);
-                        showError('Error processing server response.');
+                        showError(`Connection failed after ${MAX_RETRIES} attempts. Please check if the server is running.`);
+                    }
+                } else if (xhr.status >= 500) {
+                    // Server error - retry
+                    console.error('Server error:', xhr.status, xhr.statusText);
+                    console.error('Server response:', xhr.responseText);
+                    if (retryCount < MAX_RETRIES) {
+                        console.log('Server error, will retry...');
+                        setTimeout(() => uploadAudio(file, retryCount + 1), RETRY_DELAY);
+                        uploadStatus.textContent = `Server error (${xhr.status}), retrying in 1 minute... (${retryCount + 1}/${MAX_RETRIES})`;
+                    } else {
+                        hideProgress();
+                        showError(`Server error (${xhr.status}) after ${MAX_RETRIES} attempts: ${xhr.statusText}`);
                     }
                 } else {
-                    hideProgress();
-                    showError('Upload failed. Please try again.');
+                    // Other HTTP errors - might be client error, retry a few times
+                    console.error('HTTP error:', xhr.status, xhr.statusText);
+                    console.error('Response:', xhr.responseText);
+                    if (retryCount < Math.min(3, MAX_RETRIES)) { // Limit client error retries to 3
+                        console.log('HTTP error, will retry...');
+                        setTimeout(() => uploadAudio(file, retryCount + 1), RETRY_DELAY);
+                        uploadStatus.textContent = `Upload error (${xhr.status}), retrying in 1 minute... (${retryCount + 1}/3)`;
+                    } else {
+                        hideProgress();
+                        showError(`Upload failed (${xhr.status}): ${xhr.statusText}`);
+                    }
                 }
             });
             
-            xhr.addEventListener('error', () => {
-                hideProgress();
-                showError('Network error. Please try again.');
+            xhr.addEventListener('error', (event) => {
+                console.error('XHR Error Event:', event);
+                console.error('XHR Status:', xhr.status);
+                console.error('XHR Ready State:', xhr.readyState);
+                
+                if (retryCount < MAX_RETRIES) {
+                    console.log('Connection error, will retry...');
+                    setTimeout(() => uploadAudio(file, retryCount + 1), RETRY_DELAY);
+                    uploadStatus.textContent = `Network error, retrying in 1 minute... (${retryCount + 1}/${MAX_RETRIES})`;
+                } else {
+                    hideProgress();
+                    showError(`Network connection failed after ${MAX_RETRIES} attempts. Please check your connection and server status.`);
+                }
             });
+            
+            xhr.addEventListener('timeout', () => {
+                console.error('Request timeout after', xhr.timeout, 'ms');
+                
+                if (retryCount < MAX_RETRIES) {
+                    console.log('Request timeout, will retry...');
+                    setTimeout(() => uploadAudio(file, retryCount + 1), RETRY_DELAY);
+                    uploadStatus.textContent = `Request timeout, retrying in 1 minute... (${retryCount + 1}/${MAX_RETRIES})`;
+                } else {
+                    hideProgress();
+                    showError(`Request timeout after ${MAX_RETRIES} attempts. The server may be overloaded.`);
+                }
+            });
+            
+            xhr.addEventListener('abort', () => {
+                console.log('Request was aborted');
+                if (retryCount === 0) { // Only show abort message on first attempt
+                    hideProgress();
+                    showError('Upload was cancelled.');
+                }
+            });
+            
+            // Set a longer timeout for processing (15 minutes for retries)
+            xhr.timeout = 900000; // 15 minutes in milliseconds
             
             xhr.open('POST', '/upload');
             xhr.send(formData);
+        }
+
+        // Helper function to update step status
+        function updateStepStatus(stepElement, iconElement, completed = false) {
+            if (completed) {
+                stepElement.classList.add('completed');
+                stepElement.classList.remove('pending');
+                iconElement.classList.add('completed');
+                iconElement.classList.remove('pending');
+                iconElement.textContent = '✓';
+            } else {
+                stepElement.classList.remove('completed');
+                stepElement.classList.add('pending');
+                iconElement.classList.remove('completed');
+                iconElement.classList.add('pending');
+            }
         }
 
         function showProgress() {
@@ -537,127 +724,147 @@
             progressSection.style.display = 'block';
             resultSection.style.display = 'none';
             
-            // Reset progress steps
-            uploadStep.classList.remove('completed');
-            whisperStep.classList.remove('completed');
-            processingStep.classList.remove('completed');
-            uploadProgressFill.style.width = '0%';
-            whisperProgressFill.style.width = '0%';
-            processingProgressFill.style.width = '0%';
+            // Reset all steps to pending
+            updateStepStatus(stepUpload, iconUpload, false);
+            updateStepStatus(stepProcessing, iconProcessing, false);
+            updateStepStatus(stepFinalizing, iconFinalizing, false);
+            updateStepStatus(stepDisplaying, iconDisplaying, false);
+            
+            // Reset step numbers
+            iconUpload.textContent = '1';
+            iconProcessing.textContent = '2';
+            iconFinalizing.textContent = '3';
+            iconDisplaying.textContent = '4';
+            
+            // Initialize current status
+            currentStatusTitle.textContent = 'Uploading File';
+            statusIcon.textContent = '📤';
+            statusMessage.textContent = 'Preparing to upload your audio file...';
+            currentProgressFill.className = 'progress-fill uploading';
+            currentProgressFill.style.width = '0%';
+            progressPercentage.textContent = '0%';
         }
 
         function hideProgress() {
             progressSection.style.display = 'none';
-            if (window.whisperProgressInterval) {
-                clearInterval(window.whisperProgressInterval);
+            // Clear all intervals
+            if (window.processingCountdownInterval) {
+                clearInterval(window.processingCountdownInterval);
             }
-            if (window.finalProcessingInterval) {
-                clearInterval(window.finalProcessingInterval);
+            if (window.finalizingProgressInterval) {
+                clearInterval(window.finalizingProgressInterval);
+            }
+            if (window.displayingProgressInterval) {
+                clearInterval(window.displayingProgressInterval);
             }
         }
         
         function startUploadProgress() {
-            uploadStatus.textContent = 'Uploading file to server...';
-            uploadProgressFill.style.width = '0%';
+            // Already initialized in showProgress()
         }
         
         function updateUploadProgress(percentage) {
-            uploadProgressFill.style.width = percentage + '%';
-            uploadStatus.textContent = `Uploading... ${Math.round(percentage)}%`;
+            currentProgressFill.style.width = percentage + '%';
+            progressPercentage.textContent = Math.round(percentage) + '%';
+            statusMessage.textContent = `Uploading your audio file... ${Math.round(percentage)}%`;
         }
         
         function completeUploadStep() {
             console.log('Completing upload step...');
-            uploadStep.classList.add('completed');
-            uploadProgressFill.style.width = '100%';
-            uploadStatus.textContent = 'Upload complete!';
-        }
-        
-        function startProcessingStep() {
-            console.log('Starting processing step...');
-            processingStatus.textContent = 'Loading Whisper AI model...';
-            processingProgressFill.style.width = '10%'; // Start with some progress
+            currentProgressFill.style.width = '100%';
+            progressPercentage.textContent = '100%';
+            statusMessage.textContent = 'Upload complete!';
             
-            // Clear any existing interval
-            if (window.processingProgressInterval) {
-                clearInterval(window.processingProgressInterval);
-            }
-            
-            // Simulate processing progress since we can't track Whisper progress
-            let progress = 10;
-            const interval = setInterval(() => {
-                progress += Math.random() * 8 + 2; // 2-10% increments
-                if (progress > 90) progress = 90; // Cap at 90% until actual completion
-                processingProgressFill.style.width = progress + '%';
-                
-                console.log('Processing progress:', progress + '%');
-                
-                // Update status text based on progress
-                if (progress < 30) {
-                    processingStatus.textContent = 'Loading Whisper AI model...';
-                } else if (progress < 60) {
-                    processingStatus.textContent = 'Analyzing audio patterns...';
-                } else if (progress < 90) {
-                    processingStatus.textContent = 'Converting speech to text...';
-                }
-            }, 300);
-            
-            window.processingProgressInterval = interval;
-            console.log('Processing interval started:', interval);
+            // Mark upload step as completed
+            updateStepStatus(stepUpload, iconUpload, true);
         }
         
         function startWhisperStep() {
             console.log('Starting Whisper AI processing...');
-            whisperStatus.textContent = 'Loading Whisper AI model...';
-            whisperProgressFill.style.width = '5%';
             
-            // Clear any existing interval
-            if (window.whisperProgressInterval) {
-                clearInterval(window.whisperProgressInterval);
+            // Update current status panel
+            currentStatusTitle.textContent = 'AI Processing';
+            statusIcon.textContent = '🤖';
+            statusMessage.textContent = 'Loading Whisper Large-v3 model...';
+            currentProgressFill.className = 'progress-fill processing';
+            currentProgressFill.style.width = '5%';
+            progressPercentage.textContent = '5%';
+            
+            // Clear any existing intervals
+            if (window.processingCountdownInterval) {
+                clearInterval(window.processingCountdownInterval);
             }
             
-            // Simulate Whisper processing progress
+            // Start countdown timer (5 minutes = 300 seconds)
+            let timeRemaining = 300;
             let progress = 5;
-            const interval = setInterval(() => {
-                progress += Math.random() * 6 + 2; // 2-8% increments
-                if (progress > 90) progress = 90; // Cap at 90% until completion
-                whisperProgressFill.style.width = progress + '%';
-                
-                console.log('Whisper progress:', progress + '%');
-                
-                // Update status based on progress
-                if (progress < 20) {
-                    whisperStatus.textContent = 'Loading Whisper AI model...';
-                } else if (progress < 40) {
-                    whisperStatus.textContent = 'Detecting language and initializing...';
-                } else if (progress < 70) {
-                    whisperStatus.textContent = 'Converting speech to text...';
-                } else if (progress < 90) {
-                    whisperStatus.textContent = 'Analyzing segments and timestamps...';
-                }
-            }, 400); // Slower than upload to feel more substantial
             
-            window.whisperProgressInterval = interval;
+            const countdownInterval = setInterval(() => {
+                timeRemaining--;
+                
+                // Update progress based on time elapsed
+                const timeElapsed = 300 - timeRemaining;
+                progress = 5 + (timeElapsed / 300) * 85; // 5% to 90% over 5 minutes
+                currentProgressFill.style.width = progress + '%';
+                progressPercentage.textContent = Math.round(progress) + '%';
+                
+                // Format time remaining
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Update status based on time elapsed
+                if (timeElapsed < 30) {
+                    statusMessage.textContent = `Loading Whisper Large-v3 model... ${timeString} remaining`;
+                } else if (timeElapsed < 60) {
+                    statusMessage.textContent = `Detecting language and initializing... ${timeString} remaining`;
+                } else if (timeElapsed < 240) {
+                    statusMessage.textContent = `Converting speech to text... ${timeString} remaining`;
+                } else {
+                    statusMessage.textContent = `Analyzing segments and timestamps... ${timeString} remaining`;
+                }
+                
+                // If countdown reaches 0, show completion message but keep waiting
+                if (timeRemaining <= 0) {
+                    statusMessage.textContent = 'Processing is taking longer than expected, please wait...';
+                    clearInterval(countdownInterval);
+                }
+            }, 1000); // Update every second
+            
+            window.processingCountdownInterval = countdownInterval;
         }
         
         function completeWhisperStep() {
             console.log('Completing Whisper step...');
-            if (window.whisperProgressInterval) {
-                clearInterval(window.whisperProgressInterval);
+            
+            // Clear intervals
+            if (window.processingCountdownInterval) {
+                clearInterval(window.processingCountdownInterval);
             }
-            whisperStep.classList.add('completed');
-            whisperProgressFill.style.width = '100%';
-            whisperStatus.textContent = 'AI transcription complete!';
+            
+            // Complete the processing progress
+            currentProgressFill.style.width = '100%';
+            progressPercentage.textContent = '100%';
+            statusMessage.textContent = 'AI transcription complete!';
+            
+            // Mark processing step as completed
+            updateStepStatus(stepProcessing, iconProcessing, true);
         }
         
         function startFinalProcessingStep() {
             console.log('Starting final processing...');
-            processingStatus.textContent = 'Formatting text into paragraphs...';
-            processingProgressFill.style.width = '10%';
+            
+            // Update current status panel
+            currentStatusTitle.textContent = 'Finalizing';
+            statusIcon.textContent = '📝';
+            statusMessage.textContent = 'Formatting text into paragraphs...';
+            currentProgressFill.className = 'progress-fill finalizing';
+            currentProgressFill.style.width = '10%';
+            progressPercentage.textContent = '10%';
             
             // Clear any existing interval
-            if (window.finalProcessingInterval) {
-                clearInterval(window.finalProcessingInterval);
+            if (window.finalizingProgressInterval) {
+                clearInterval(window.finalizingProgressInterval);
             }
             
             // Simulate final processing (paragraph formatting)
@@ -665,31 +872,77 @@
             const interval = setInterval(() => {
                 progress += Math.random() * 15 + 5; // Faster progress for final step
                 if (progress > 95) progress = 95;
-                processingProgressFill.style.width = progress + '%';
-                
-                console.log('Final processing progress:', progress + '%');
+                currentProgressFill.style.width = progress + '%';
+                progressPercentage.textContent = Math.round(progress) + '%';
                 
                 // Update status
                 if (progress < 40) {
-                    processingStatus.textContent = 'Analyzing speech segments...';
+                    statusMessage.textContent = 'Analyzing speech segments...';
                 } else if (progress < 70) {
-                    processingStatus.textContent = 'Creating paragraph breaks...';
+                    statusMessage.textContent = 'Creating paragraph breaks...';
                 } else {
-                    processingStatus.textContent = 'Finalizing document structure...';
+                    statusMessage.textContent = 'Finalizing document structure...';
                 }
             }, 200); // Fast final processing
             
-            window.finalProcessingInterval = interval;
+            window.finalizingProgressInterval = interval;
         }
         
         function completeFinalProcessingStep() {
             console.log('Completing final processing...');
-            if (window.finalProcessingInterval) {
-                clearInterval(window.finalProcessingInterval);
+            
+            // Clear intervals
+            if (window.finalizingProgressInterval) {
+                clearInterval(window.finalizingProgressInterval);
             }
-            processingStep.classList.add('completed');
-            processingProgressFill.style.width = '100%';
-            processingStatus.textContent = 'Text formatting complete!';
+            
+            // Complete finalizing progress
+            currentProgressFill.style.width = '100%';
+            progressPercentage.textContent = '100%';
+            statusMessage.textContent = 'Text formatting complete!';
+            
+            // Mark finalizing step as completed
+            updateStepStatus(stepFinalizing, iconFinalizing, true);
+            
+            // Start displaying step
+            startDisplayingStep();
+        }
+        
+        function startDisplayingStep() {
+            console.log('Starting displaying step...');
+            
+            // Update current status panel
+            currentStatusTitle.textContent = 'Displaying Results';
+            statusIcon.textContent = '🎉';
+            statusMessage.textContent = 'Preparing your transcription...';
+            currentProgressFill.className = 'progress-fill finalizing';
+            currentProgressFill.style.width = '10%';
+            progressPercentage.textContent = '10%';
+            
+            // Quick progress for display
+            let progress = 10;
+            const interval = setInterval(() => {
+                progress += 20; // Fast completion
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    completeDisplayingStep();
+                }
+                currentProgressFill.style.width = progress + '%';
+                progressPercentage.textContent = progress + '%';
+                statusMessage.textContent = 'Your transcription is ready!';
+            }, 100);
+            
+            window.displayingProgressInterval = interval;
+        }
+        
+        function completeDisplayingStep() {
+            console.log('Completing displaying step...');
+            
+            // Mark displaying step as completed
+            updateStepStatus(stepDisplaying, iconDisplaying, true);
+            
+            statusMessage.textContent = 'Transcription complete! Redirecting...';
         }
 
         function showResult(text) {
@@ -699,43 +952,182 @@
         }
         
         function displayFormattedText(text) {
-            // Debug: log the text to see what we're getting
-            console.log('Text to display:', JSON.stringify(text));
-            console.log('Contains \\n\\n:', text.includes('\n\n'));
+            console.log('Original text:', JSON.stringify(text));
             console.log('Text length:', text.length);
             
-            // Always try to split by double line breaks first (Whisper format)
-            let paragraphs = text.split('\n\n').filter(p => p.trim());
-            console.log('Split by \\n\\n:', paragraphs.length, 'paragraphs');
+            // Clear previous content
+            textOutput.innerHTML = '';
             
-            // If we got multiple paragraphs from Whisper formatting
-            if (paragraphs.length > 1) {
-                console.log('Creating HTML with', paragraphs.length, 'paragraphs');
-                const htmlContent = paragraphs
-                    .map(paragraph => `<p>${paragraph.trim()}</p>`)
-                    .join('');
-                textOutput.innerHTML = htmlContent;
-                console.log('HTML content created:', htmlContent.substring(0, 200) + '...');
+            if (!text || !text.trim()) {
+                const p = document.createElement('p');
+                p.textContent = 'No text available.';
+                p.style.textAlign = 'center';
+                p.style.color = '#666';
+                textOutput.appendChild(p);
+                return;
             }
-            // Try single line breaks as fallback
-            else if (text.includes('\n')) {
-                const lines = text.split('\n').filter(l => l.trim());
-                console.log('Fallback - Split by \\n:', lines.length, 'lines');
+            
+            // Clean and normalize the text first
+            let cleanText = text.trim();
+            
+            // Replace various line break combinations with consistent double line breaks
+            cleanText = cleanText
+                .replace(/\r\n/g, '\n')  // Windows line endings to Unix
+                .replace(/\r/g, '\n')    // Mac line endings to Unix
+                .replace(/\n{3,}/g, '\n\n')  // Multiple line breaks to double
+                .replace(/\s*\n\s*/g, '\n')  // Remove spaces around line breaks
+                .trim();
+            
+            console.log('Cleaned text:', JSON.stringify(cleanText));
+            
+            let paragraphs = [];
+            
+            // Try to split by double line breaks first (proper paragraph formatting)
+            if (cleanText.includes('\n\n')) {
+                paragraphs = cleanText.split('\n\n')
+                    .map(p => p.trim())
+                    .filter(p => p.length > 0);
+                console.log('Found', paragraphs.length, 'paragraphs with \\n\\n');
+            }
+            // If no double line breaks, try to create intelligent paragraphs
+            else if (cleanText.includes('\n')) {
+                const lines = cleanText.split('\n')
+                    .map(l => l.trim())
+                    .filter(l => l.length > 0);
                 
-                if (lines.length > 1) {
-                    const htmlContent = lines
-                        .map(line => `<p>${line.trim()}</p>`)
-                        .join('');
-                    textOutput.innerHTML = htmlContent;
-                } else {
-                    textOutput.innerText = text;
+                console.log('Found', lines.length, 'lines to process');
+                
+                // Group lines into paragraphs using intelligent rules
+                paragraphs = createIntelligentParagraphs(lines);
+                console.log('Created', paragraphs.length, 'intelligent paragraphs');
+            }
+            // Single block of text - try to break it up intelligently
+            else {
+                paragraphs = breakTextIntoParagraphs(cleanText);
+                console.log('Broke single text into', paragraphs.length, 'paragraphs');
+            }
+            
+            // Create HTML paragraphs
+            if (paragraphs.length === 0) {
+                paragraphs = [cleanText]; // Fallback to original text
+            }
+            
+            paragraphs.forEach((paragraph, index) => {
+                if (paragraph.trim()) {
+                    const p = document.createElement('p');
+                    p.textContent = paragraph.trim();
+                    p.style.marginBottom = '1.5em';
+                    p.style.textAlign = 'justify';
+                    p.style.lineHeight = '1.6';
+                    p.style.textIndent = '1.5em'; // Indent first line of each paragraph
+                    textOutput.appendChild(p);
+                }
+            });
+            
+            console.log('Final paragraphs created:', paragraphs.length);
+        }
+        
+        function createIntelligentParagraphs(lines) {
+            const paragraphs = [];
+            let currentParagraph = [];
+            
+            // Words that typically start new paragraphs or topics
+            const topicStarters = [
+                'now', 'next', 'then', 'first', 'second', 'third', 'finally', 
+                'however', 'furthermore', 'moreover', 'additionally', 'meanwhile',
+                'therefore', 'consequently', 'in conclusion', 'to summarize',
+                'on the other hand', 'in contrast', 'similarly', 'likewise',
+                'for example', 'for instance', 'specifically', 'particularly',
+                'indeed', 'in fact', 'actually', 'essentially', 'basically',
+                'ultimately', 'eventually', 'subsequently', 'previously'
+            ];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const lineWords = line.toLowerCase().split(/\s+/);
+                const firstWords = lineWords.slice(0, 3).join(' ');
+                
+                let shouldStartNewParagraph = false;
+                
+                // Start new paragraph if:
+                // 1. It's the first line
+                if (i === 0) {
+                    shouldStartNewParagraph = true;
+                }
+                // 2. Current paragraph is getting long (more than 4 lines)
+                else if (currentParagraph.length >= 4) {
+                    shouldStartNewParagraph = true;
+                }
+                // 3. Line starts with topic transition words
+                else if (topicStarters.some(starter => 
+                    firstWords.startsWith(starter) || 
+                    lineWords[0] === starter
+                )) {
+                    shouldStartNewParagraph = true;
+                }
+                // 4. Significant change in line length (might indicate new topic)
+                else if (currentParagraph.length > 0) {
+                    const avgLength = currentParagraph.reduce((sum, l) => sum + l.length, 0) / currentParagraph.length;
+                    if (line.length > avgLength * 1.5 || line.length < avgLength * 0.5) {
+                        if (currentParagraph.length >= 2) {
+                            shouldStartNewParagraph = true;
+                        }
+                    }
+                }
+                // 5. Line starts with a capital letter after a period (new sentence)
+                else if (currentParagraph.length > 0) {
+                    const lastLine = currentParagraph[currentParagraph.length - 1];
+                    if (lastLine.match(/[.!?]\s*$/) && line.match(/^[A-Z]/)) {
+                        if (currentParagraph.length >= 2) {
+                            shouldStartNewParagraph = true;
+                        }
+                    }
+                }
+                
+                if (shouldStartNewParagraph && currentParagraph.length > 0) {
+                    paragraphs.push(currentParagraph.join(' '));
+                    currentParagraph = [];
+                }
+                
+                currentParagraph.push(line);
+            }
+            
+            // Add the last paragraph
+            if (currentParagraph.length > 0) {
+                paragraphs.push(currentParagraph.join(' '));
+            }
+            
+            return paragraphs;
+        }
+        
+        function breakTextIntoParagraphs(text) {
+            // Split by sentence endings followed by capital letters
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            
+            if (sentences.length <= 1) {
+                return [text];
+            }
+            
+            const paragraphs = [];
+            let currentParagraph = [];
+            
+            for (let i = 0; i < sentences.length; i++) {
+                const sentence = sentences[i].trim();
+                currentParagraph.push(sentence);
+                
+                // Create a new paragraph every 3-4 sentences
+                if (currentParagraph.length >= 3 && Math.random() > 0.3) {
+                    paragraphs.push(currentParagraph.join(' '));
+                    currentParagraph = [];
                 }
             }
-            else {
-                // Single block of text with no line breaks
-                console.log('Using single text block - no line breaks found');
-                textOutput.innerText = text;
+            
+            // Add remaining sentences
+            if (currentParagraph.length > 0) {
+                paragraphs.push(currentParagraph.join(' '));
             }
+            
+            return paragraphs.length > 1 ? paragraphs : [text];
         }
 
         function showError(message) {
